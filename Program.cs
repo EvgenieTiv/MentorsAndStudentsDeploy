@@ -29,12 +29,11 @@ builder.Services.AddCors(options =>
 });
 
 var logger = new LoggerConfiguration()
-    .WriteTo.AzureBlobStorage(
-        connectionString: builder.Configuration["FilesConnectionStrings:ConnectionString"],
-        storageFileName: "logs/{yyyy}/{MM}/{dd}/log.txt",
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level}] {Message}{NewLine}{Exception}"
-    )
+    .WriteTo.Console()
     .CreateLogger();
+
+Log.Logger = logger;
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
