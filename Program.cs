@@ -14,18 +14,28 @@ var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
+var allowedFrontendOrigin = builder.Configuration["AllowedOrigins:Frontend"];
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: MyAllowSpecificOrigins,
-        policy =>
+    options.AddPolicy(name: MyAllowSpecificOrigins, policy =>
+    {
+        if (!string.IsNullOrWhiteSpace(allowedFrontendOrigin))
+        {
+            policy.WithOrigins("http://localhost:5173", allowedFrontendOrigin)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
         {
             policy.WithOrigins("http://localhost:5173")
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
-        });
+        }
+    });
 });
 
 var logger = new LoggerConfiguration()
@@ -79,10 +89,13 @@ builder.Services.AddSwaggerGen(c =>
         Description = "JWT Authorization header using the Bearer scheme."
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            new OpenApiSecurityScheme {
-                Reference = new OpenApiReference {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Token"
                 }
@@ -117,8 +130,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-builder.Host.UseSerilog(logger);
-
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -127,11 +138,8 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -144,5 +152,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/", () => "MentorsAndStudents backend is running");
+app.MapGet("/health", () => Results.Ok("Healthy"));
 
 app.Run();
